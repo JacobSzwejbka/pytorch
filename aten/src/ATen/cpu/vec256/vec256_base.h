@@ -636,6 +636,50 @@ Vec256<T> inline minimum(const Vec256<T> &a, const Vec256<T> &b) {
   return c;
 }
 
+// Vectorized version of std::fmax
+template <class T,
+          typename std::enable_if_t<!c10::is_complex<T>::value, int> = 0>
+inline Vec256<T> fmax(const Vec256<T> &a, const Vec256<T> &b) {
+  Vec256<T> c;
+  for (int i = 0; i != Vec256<T>::size(); i++) {
+    // Not use c[i] to circumvent a compilation error on MacOS:
+    //     ../aten/src/ATen/cpu/vec256/vec256_base.h:644:12: error:
+    //     expression is not assignable
+    //     c[i] = a[i];
+    //     ~~~~ ^
+    ((T*)c)[i] = a[i] > b[i] ? a[i] : b[i];
+    if (_isnan(b[i])) {
+      // If either input is NaN, the result is the other input.
+      // NOTE: The case where b[i] was NaN is handled correctly by the naive
+      // ternary operator above.
+      ((T*)c)[i] = a[i];
+    }
+  }
+  return c;
+}
+
+// Vectorized version of std::fmin
+template <class T,
+          typename std::enable_if_t<!c10::is_complex<T>::value, int> = 0>
+inline Vec256<T> fmin(const Vec256<T> &a, const Vec256<T> &b) {
+  Vec256<T> c;
+  for (int i = 0; i != Vec256<T>::size(); i++) {
+    // Not use c[i] to circumvent a compilation error on MacOS:
+    //     ../aten/src/ATen/cpu/vec256/vec256_base.h:644:12: error:
+    //     expression is not assignable
+    //     c[i] = a[i];
+    //     ~~~~ ^
+    ((T*)c)[i] = a[i] < b[i] ? a[i] : b[i];
+    if (_isnan(b[i])) {
+      // If either input is NaN, the result is the other input.
+      // NOTE: The case where b[i] was NaN is handled correctly by the naive
+      // ternary operator above.
+      ((T*)c)[i] = a[i];
+    }
+  }
+  return c;
+}
+
 template <class T,
           typename std::enable_if<!c10::is_complex<T>::value, int>::type = 0>
 Vec256<T> inline clamp(const Vec256<T> &a, const Vec256<T> &min_vec, const Vec256<T> &max_vec) {
